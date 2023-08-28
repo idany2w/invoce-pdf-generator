@@ -13,7 +13,7 @@
           <p class="form__label">Logo</p>
           <InputFile
 						class="form__input"
-						v-model:files="form.logo"
+						v-model:files="form.supplier.logo"
 					/>
         </div>
         <div class="form__item">
@@ -32,6 +32,7 @@
             name="supplier.inn"
             placeholder="supplier.inn"
             v-model="form.supplier.inn"
+            @input="numericInput"
           />
         </div>
         <div class="form__item">
@@ -41,6 +42,16 @@
             name="supplier.kpp"
             placeholder="supplier.kpp"
             v-model="form.supplier.kpp"
+            @input="numericInput"
+          />
+        </div>
+        <div class="form__item">
+          <InputText
+            label="Address"
+            labelClass="form__label"
+            name="supplier.address"
+            placeholder="supplier.address"
+            v-model="form.supplier.address"
           />
         </div>
       </div>
@@ -63,6 +74,16 @@
             name="supplier.inn"
             placeholder="supplier.inn"
             v-model="form.client.inn"
+            @input="numericInput"
+          />
+        </div>
+        <div class="form__item">
+          <InputText
+            label="Address"
+            labelClass="form__label"
+            name="client.address"
+            placeholder="client.address"
+            v-model="form.client.address"
           />
         </div>
       </div>
@@ -83,6 +104,20 @@
         </div>
       </div>
 
+      <div class="form__item form__errors" v-if="errors.form?.message || formErrors.length">
+        <p v-if="errors.form?.message" class="form__errors-title">{{ errors.form?.message }}</p>
+
+        <template v-if="formErrors.length">
+          <p
+            class="form__error"
+            v-for="(errorMessage, key) in formErrors"
+            :key="key"
+          >
+            {{ errorMessage }}
+          </p>
+        </template>
+      </div>
+
       <div class="form__item">
         <button class="form__submit-btn btn" @click="submit">Submit</button>
       </div>
@@ -91,9 +126,11 @@
 </template>
 
 <script>
-import InputText from "./InputText.vue";
-import InputTable from "./InputTable.vue";
-import InputFile from "./InputFile.vue";
+import InputText from "@/components/InputText.vue";
+import InputTable from "@/components/InputTable.vue";
+import InputFile from "@/components/InputFile.vue";
+import { parseNumeric } from "@/utils/helpers"
+import axios from "axios";
 export default {
   name: "Form",
   components: {
@@ -105,48 +142,56 @@ export default {
     return {
       pendings: {},
       errors: {},
-      form: {
-				logo: null,
+      form: {},
+    };
+  },
+
+  computed:{
+    formErrors(){
+      if(!this.errors.form?.errors){
+        return [];
+      }
+
+      let result = [];
+
+      for (const key in this.errors.form.errors) {
+        result.push(...this.errors.form.errors[key]);
+      }
+
+      return result;
+    }
+  },
+
+  methods: {
+    resetForm(){
+      this.form = {
         supplier: {
+          logo: null,
           name: null,
           inn: null,
           kpp: null,
+          address: null,
         },
         client: {
           fullName: null,
           inn: null,
+          address: null,
         },
         products: [],
-      },
-    };
-  },
+      }
+    },
 
-  methods: {
+    numericInput(event){
+      event.target.value = parseNumeric(event.target.value);
+    },
     productsColInput(value, colIndex, rowIndex) {
       value = value?.trim();
 
       if (["quantity", "price"].includes(colIndex)) {
-        let parts = value.replace(/[^\d\.]+/, "").split(".");
-
-        value = parts[0];
-
-        if (parts[1] === "" || parseInt(parts[1])) {
-          value = `${value}.${parts[1]}`;
-        }
+        value = parseNumeric(value);
       }
 
       this.form.products[rowIndex][colIndex] = `${value}`;
-    },
-
-    makeFormData(object) {
-      let formData = new FormData();
-
-			formData.append('supplier', JSON.stringify(object.supplier))
-			formData.append('client', JSON.stringify(object.client))
-			formData.append('products', JSON.stringify(object.products))
-			formData.append('logo', object.logo[0])
-
-      return formData;
     },
 
     async submit() {
@@ -155,12 +200,39 @@ export default {
       this.pendings.form = true;
       this.errors.form = {};
 
-      let formData = this.makeFormData(this.form);
-			
-			
+      try {
+        let response = await axios.postForm(
+          'http://localhost:8000/api/generate-invoce-pdf',
+          this.form,
+          {
+            responseType: 'blob',
+            validateStatus: (s) => s === 200,
+          }
+        );
 
+        const link = document.createElement('a');
+        link.href = href;
+        link.setAttribute('download', 'file.pdf'); //or any other extension
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        URL.revokeObjectURL(href);
+
+        // this.resetForm();
+      } catch (error) {
+        let errorResponse = await error.response.data.text();
+
+        this.errors.form = JSON.parse(errorResponse);
+      } finally {
+        this.pendings.form = false;
+      }
     },
   },
+
+  created(){
+    this.resetForm();
+  }
 };
 </script>
 
@@ -199,6 +271,19 @@ export default {
     font-weight: bold;
     display: block;
     margin-bottom: 8px;
+  }
+  
+  &__errors{
+    padding: 1em;
+    border: var(--color-2) 1px solid;
+    &-title{
+      color: var(--color-2);
+      margin-bottom: 1em;
+    }
+  }
+
+  &__error{
+    color: var(--color-2)
   }
 
   &__submit-btn {

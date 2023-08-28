@@ -22,7 +22,9 @@
 export default {
 	name:'InputText',
 	props:{
-    modelValue: String,
+    modelValue: {
+			types: [String, Number]
+		},
 		label: {
 			default: null
 		},

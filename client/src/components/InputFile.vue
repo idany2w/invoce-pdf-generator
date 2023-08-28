@@ -6,6 +6,7 @@
       :name="name"
 			:multiple="multiple"
       @change="inputFileChage"
+			ref="input"
     />
   </label>
 </template>
@@ -28,9 +29,20 @@ export default {
 	],
 	methods: {
 		inputFileChage(e){
-			this.$emit('update:files', e.target.files)
+			if(this.multiple){
+				this.$emit('update:files', e.target.files)
+			} else {
+				this.$emit('update:files', e.target.files[0])
+			}
 		}
 	},
+	watch:{
+		files(value){
+			if(!value){
+				this.$refs.input.value = null;
+			}
+		}
+	}
 };
 </script>
 
