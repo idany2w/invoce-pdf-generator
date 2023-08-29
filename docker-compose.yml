@@ -1,0 +1,44 @@
+version: '3'
+services:
+
+  # api контейнер для php
+  api:
+    # Для установки нужных пакетов используем не чистый образ, а инструкции из конкретного файла Dockerfile
+    build:
+      context: .
+      dockerfile: ./docker/api/Dockerfile
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    tty: true
+    working_dir: /var/www
+    volumes:
+      - ./api:/var/www
+      - ./docker/api/php.ini:/usr/local/etc/php/php.ini
+
+  # client контейнер для vue
+  client:
+    build:
+      context: .
+      dockerfile: ./docker/client/Dockerfile
+    restart: unless-stopped
+    tty: true
+    working_dir: /var/www
+    volumes:
+      - ./client:/var/www # Пробрасываем локальную папку client в контейнер как /var/www
+
+  # Nginx контейнер для вебсервера
+  nginx:
+    # Используем готовый образ для nginx контейнера
+    image: nginx:alpine
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8080:8080" # Внутренний порт контейнера пробрасываем на host машину
+      - "8000:8000" # Внутренний порт контейнера пробрасываем на host машину
+    volumes:
+      - ./api:/var/www # Пробрасываем локальную папку api в контейнер как /var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/ # Передаем в контейнер конфигурационные файлы nginx
+    depends_on:
+      - api
+      - client
