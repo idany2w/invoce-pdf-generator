@@ -9,7 +9,6 @@ class GenerateInvocePDFService
 {
 	public static function loadView($data)
 	{
-
 		$products = [];
 		$total = [
 			'sum' => 0,
@@ -35,7 +34,7 @@ class GenerateInvocePDFService
 		$invoiceData = [
 			'id' => '123123/123',
 			'date' => date('d.m.Y'),
-			'logo' => $data['logo'],
+			'logo' => data_get($data, 'supplier.logo'),
 			'supplier' => $data['supplier'],
 			'client' => $data['client'],
 			'products' => $products,

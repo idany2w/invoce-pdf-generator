@@ -202,7 +202,7 @@ export default {
 
       try {
         let response = await axios.postForm(
-          'http://localhost:8000/api/generate-invoce-pdf',
+          `${process.env.VUE_APP_API_URL}/api/generate-invoce-pdf`,
           this.form,
           {
             responseType: 'blob',
@@ -210,6 +210,7 @@ export default {
           }
         );
 
+        const href = URL.createObjectURL(response.data);
         const link = document.createElement('a');
         link.href = href;
         link.setAttribute('download', 'file.pdf'); //or any other extension
@@ -219,8 +220,9 @@ export default {
         document.body.removeChild(link);
         URL.revokeObjectURL(href);
 
-        // this.resetForm();
+        this.resetForm();
       } catch (error) {
+        console.error(error)
         let errorResponse = await error.response.data.text();
 
         this.errors.form = JSON.parse(errorResponse);
